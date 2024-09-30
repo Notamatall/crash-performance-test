@@ -1,5 +1,5 @@
 require("dotenv").config({ path: "./.env" });
-const { getJson } = require("./utils"); // './math' is the path to the file
+const { getJson } = require("./utils");
 const axios = require("axios");
 const io = require("socket.io-client");
 
@@ -16,7 +16,7 @@ async function authenticate(user) {
 
     const response = await axios.post(url, body, {
       headers: {
-        "x-debug-token": "yw74DcaSHU1qaYm1m2Tlr8SLO4vmYC",
+        "x-debug-token": process.env.X_DEBUG_TOKEN,
       },
     });
     if (response.headers["set-cookie"]) {
