@@ -4,7 +4,6 @@ const axios = require("axios");
 const io = require("socket.io-client");
 
 const usersCookies = new Map();
-const users = [];
 async function authenticate(user) {
   try {
     const body = {
@@ -51,11 +50,17 @@ async function createUserSocketConnection(user) {
   socket.on;
 }
 
-function connectSocket(accessToken) {
+function connectSocket(user) {
+  const url = `${process.env.BACKEND_URL}${process.env.SOCKET_EVENT}`;
+
   return new Promise((resolve, reject) => {
-    const socket = io("http://localhost:3000", {
+    const socket = io(url, {
       withCredentials: true,
       transports: ["websocket"],
+      extraHeaders: {
+        cookie: usersCookies.get(user.id),
+        origin: "allowed-origin",
+      },
     });
 
     socket.on("connect", () => {
@@ -67,20 +72,68 @@ function connectSocket(accessToken) {
     });
   });
 }
+
+async function establishUserConnection(user) {
+  await authenticate(user);
+  await fetchUserData(user);
+  const socket = await connectSocket(user);
+  let useBetRegistered = false;
+  let userBetPlaced = false;
+  let isPlacingBet = Math.round(Math.random() * 1);
+
+  setInterval(() => {
+    socket.emit("CrashActiveGameBettorsRequest");
+  }, Math.random() * 10000 + 5000);
+
+  socket.on("CrashState", (data) => {
+    const { status } = data;
+    if (status === "CRASHED") {
+      useBetRegistered = false;
+      userBetPlaced = false;
+      isPlacingBet = Math.round(Math.random() * 1);
+    }
+
+    if (status === "IN_PROGRESS" && !useBetRegistered && !isPlacingBet) {
+      useBetRegistered = true;
+      const autoCashoutAt = Math.random() * 2 + 1.01;
+      const amount = Math.random() * 500;
+      socket.emit("CrashRegisterBet", {
+        amount,
+        autoCashoutAt,
+      });
+    }
+
+    if (status === "ACCEPTING_BETS" && !userBetPlaced && isPlacingBet) {
+      userBetPlaced = true;
+      const autoCashoutAt = Math.random() * 2 + 1.01;
+      const amount = Math.random() * 500;
+      socket.emit("CrashPlaceBet", {
+        amount,
+        autoCashoutAt,
+      });
+    }
+  });
+}
+
+function waitSomeTime(time) {
+  return new Promise((res) => {
+    setTimeout(res, time);
+  });
+}
+
 async function main() {
   try {
     const users = await getJson("users.json");
-    await authenticate(users[0]);
-    await fetchUserData(users[0]);
+    let usersRegistered = 0;
+    for (const user of users) {
+      usersRegistered++;
+      await establishUserConnection(user);
+      await waitSomeTime(300);
+    }
+    console.log(usersRegistered);
   } catch (err) {
     console.error(err);
   }
 }
-const socket = io("http://localhost:3000", {
-  query: {
-    token: accessToken,
-  },
-  transports: ["websocket"],
-});
 
 main();
