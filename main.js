@@ -36,18 +36,8 @@ async function fetchUserData(user) {
       Cookie: cookies,
     },
   });
-
-  console.log(response.data);
-}
-
-async function createUserSocketConnection(user) {
-  const url = `${process.env.BACKEND_URL}${process.env.ME_ENDPOINT}`;
-  const socket = io(url, {
-    withCredentials: true,
-    transports: ["websocket"],
-  });
-
-  socket.on;
+  const { displayName } = response.data.user;
+  console.log(displayName);
 }
 
 function connectSocket(user) {
@@ -130,7 +120,6 @@ async function main() {
       await establishUserConnection(user);
       await waitSomeTime(300);
     }
-    console.log(usersRegistered);
   } catch (err) {
     console.error(err);
   }
